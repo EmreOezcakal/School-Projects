@@ -1,5 +1,5 @@
 // Service Worker: Netz zuerst (Updates kommen sofort), offline aus dem Zwischenspeicher
-const CACHE = "punktekonto-cf1b49c1df";
+const CACHE = "kurs-7f9eb3d645";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {

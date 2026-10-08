@@ -2,4 +2,6 @@
 
 | Projekt | Was | Öffnen |
 |---|---|---|
-| [Punktekonto](punktekonto/) | Schulplaner fürs Abitur als iPad-App: Hausaufgaben, Stundenplan, Klausuren, Noten | [App öffnen](https://emreoezcakal.github.io/School-Projects/punktekonto/) |
+| [Kurs](kurs/) | Schulplaner fürs Abitur als iPad-App: Jetzt-Ansicht, Hausaufgaben, Stundenplan, Klausuren mit Lernplan, Fokus-Timer, Noten | [App öffnen](https://emreoezcakal.github.io/School-Projects/kurs/) |
+
+Die frühere Adresse `punktekonto/` leitet auf `kurs/` weiter.

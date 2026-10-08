@@ -1,14 +1,14 @@
 {
-  "name": "Punktekonto",
-  "short_name": "Punktekonto",
+  "name": "Kurs",
+  "short_name": "Kurs",
   "description": "Schulplaner fürs Abitur: Hausaufgaben, Stundenplan, Klausuren, Noten.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0A0C11",
-  "theme_color": "#0A0C11",
+  "background_color": "#08090D",
+  "theme_color": "#08090D",
   "icons": [
     {
       "src": "icon-192.png",
