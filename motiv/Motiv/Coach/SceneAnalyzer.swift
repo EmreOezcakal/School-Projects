@@ -70,7 +70,7 @@ final class SceneAnalyzer {
         let generation = trackGeneration
         do {
             try sequenceHandler.perform([request], on: buffer, orientation: .up)
-            guard let result = request.results?.first else { return }
+            guard let result = request.results?.first as? VNDetectedObjectObservation else { return }
             request.inputObservation = result
             lowConfidenceFrames = result.confidence < 0.3 ? lowConfidenceFrames + 1 : 0
             let lost = lowConfidenceFrames > 8
