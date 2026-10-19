@@ -1,0 +1,82 @@
+# Baut die iPhone-App „Motiv“ auf einem Mac-Server von GitHub (kostenlos für öffentliche Repos)
+# und legt die installierbare Datei Motiv.ipa unter Releases → „motiv-latest“ ab.
+name: Motiv iOS-App bauen
+
+on:
+  push:
+    branches: [motiv-app, main]
+    paths:
+      - "motiv/**"
+      - ".github/workflows/motiv-ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: motiv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Xcode-Version
+        run: xcodebuild -version
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Xcode-Projekt erzeugen
+        working-directory: motiv
+        run: xcodegen generate
+
+      - name: App bauen (unsigniert)
+        working-directory: motiv
+        run: |
+          set +e
+          xcodebuild \
+            -project Motiv.xcodeproj \
+            -scheme Motiv \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build > build.log 2>&1
+          status=$?
+          echo "::group::Warnungen im eigenen Code"
+          grep -E "/motiv/Motiv/.*warning:" build.log | sort -u | head -60
+          echo "::endgroup::"
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | sort -u | head -100
+          if [ $status -ne 0 ]; then tail -80 build.log; fi
+          exit $status
+
+      - name: IPA packen
+        working-directory: motiv
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Motiv.app Payload/
+          zip -qry Motiv.ipa Payload
+          ls -lh Motiv.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Motiv-ipa
+          path: motiv/Motiv.ipa
+
+      - name: Download-Link aktualisieren (Release „motiv-latest“)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete motiv-latest --yes --cleanup-tag || true
+          gh release create motiv-latest motiv/Motiv.ipa \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Motiv – neuester Build" \
+            --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Installation: siehe motiv/README.md"

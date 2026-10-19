@@ -1,0 +1,5 @@
+Motiv.xcodeproj/
+build/
+build.log
+Payload/
+*.ipa
