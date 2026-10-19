@@ -50,12 +50,13 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") {
-                        Keychain.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: Keychain.apiKeyAccount)
-                        dismiss()
-                    }
+                    Button("Fertig") { dismiss() }
                 }
             }
+        }
+        // Auch beim Wegwischen des Blatts sichern
+        .onDisappear {
+            Keychain.save(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: Keychain.apiKeyAccount)
         }
     }
 }
