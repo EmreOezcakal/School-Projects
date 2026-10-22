@@ -8,6 +8,19 @@ final class PreviewView: UIView {
         // layerClass oben garantiert den Typ
         layer as! AVCaptureVideoPreviewLayer
     }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        lockPortrait()
+    }
+
+    /// Die Vorschau immer im Hochformat zeigen – wie Foto- und Analysebilder.
+    func lockPortrait() {
+        guard let connection = previewLayer.connection,
+              connection.isVideoRotationAngleSupported(90),
+              connection.videoRotationAngle != 90 else { return }
+        connection.videoRotationAngle = 90
+    }
 }
 
 /// Live-Bild der Kamera. Der umgebende Rahmen hat dasselbe Seitenverhältnis wie der Sensor (3:4),
@@ -23,5 +36,8 @@ struct CameraPreview: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    // Die Verbindung entsteht erst, wenn die Kamera eingerichtet ist – daher bei jeder Aktualisierung prüfen.
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.lockPortrait()
+    }
 }

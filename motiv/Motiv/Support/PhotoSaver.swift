@@ -2,11 +2,10 @@ import Photos
 import UIKit
 
 enum PhotoSaver {
-    /// Legt das Bild in der Fotos-App ab. `completion` läuft auf dem Main-Thread.
-    static func save(_ image: UIImage, completion: ((Bool) -> Void)? = nil) {
+    /// Legt fertige Bilddaten (HEIF oder JPEG) unverändert in der Fotos-App ab. `completion` läuft auf dem Main-Thread.
+    static func save(_ data: Data, completion: ((Bool) -> Void)? = nil) {
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-            guard status == .authorized || status == .limited,
-                  let data = image.jpegData(compressionQuality: 0.95) else {
+            guard status == .authorized || status == .limited else {
                 DispatchQueue.main.async { completion?(false) }
                 return
             }

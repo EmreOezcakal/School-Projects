@@ -24,7 +24,9 @@ final class CameraModel: NSObject, ObservableObject {
     @Published private(set) var zoomPresets: [ZoomPreset] = []
     @Published private(set) var activeZoom: CGFloat = 1
     @Published var flashOn = false
+    /// Vorschaubild des letzten Fotos und das Foto selbst in voller Auflösung (HEIF/JPEG).
     @Published var lastPhoto: UIImage?
+    var lastPhotoData: Data?
 
     private let sessionQueue = DispatchQueue(label: "motiv.session")
     private let videoQueue: DispatchQueue
@@ -32,7 +34,10 @@ final class CameraModel: NSObject, ObservableObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private var device: AVCaptureDevice?
     private var isConfigured = false
-    private var captureCompletion: ((UIImage?) -> Void)?
+    private var captureCompletion: ((Data?) -> Void)?
+    /// Größte vom Sensor unterstützte Fotoauflösung und die größte bis 12 MP.
+    private var fullDimensions: CMVideoDimensions?
+    private var standardDimensions: CMVideoDimensions?
 
     /// Angezeigter Zoom = Gerätezoom × Faktor. Bei Kameras mit Ultraweitwinkel ist 1.0 Gerätezoom = .5x.
     private var displayMultiplier: CGFloat = 1
@@ -113,6 +118,8 @@ final class CameraModel: NSObject, ObservableObject {
             }
         }
         session.commitConfiguration()
+        // erst nach dem Festlegen des Formats: welche Fotoauflösungen der Sensor kann
+        configurePhotoDimensions(for: device)
 
         self.device = device
         isConfigured = true
@@ -209,8 +216,9 @@ final class CameraModel: NSObject, ObservableObject {
 
     // MARK: Auslösen
 
-    /// Nimmt ein Foto auf. `completion` läuft auf dem Main-Thread.
-    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
+    /// Nimmt ein Foto auf und liefert die unveränderten Dateidaten der Kamera (HEIF, mit Metadaten).
+    /// `highResolution`: größte Sensorauflösung (24/48 MP, je nach iPhone) statt 12 MP. `completion` läuft auf dem Main-Thread.
+    func capturePhoto(highResolution: Bool, completion: @escaping (Data?) -> Void) {
         let flash = flashOn
         sessionQueue.async {
             let settings: AVCapturePhotoSettings
@@ -222,10 +230,24 @@ final class CameraModel: NSObject, ObservableObject {
             if self.photoOutput.supportedFlashModes.contains(.on) {
                 settings.flashMode = flash ? .on : .off
             }
-            settings.photoQualityPrioritization = .balanced
+            if let dims = highResolution ? self.fullDimensions : self.standardDimensions {
+                settings.maxPhotoDimensions = dims
+            }
+            // Volle Bildverarbeitung von Apple (Deep Fusion / Photonic Engine), etwas langsamer als „balanced“
+            settings.photoQualityPrioritization = self.photoOutput.maxPhotoQualityPrioritization
             self.captureCompletion = completion
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
+    }
+
+    /// Wählt aus den Auflösungen des aktiven Formats die größte und die größte bis 12 MP.
+    private func configurePhotoDimensions(for device: AVCaptureDevice) {
+        let area = { (d: CMVideoDimensions) in Int(d.width) * Int(d.height) }
+        let all = device.activeFormat.supportedMaxPhotoDimensions.sorted { area($0) < area($1) }
+        guard let largest = all.last else { return }
+        fullDimensions = largest
+        standardDimensions = all.last(where: { area($0) <= 12_500_000 }) ?? all.first
+        photoOutput.maxPhotoDimensions = largest
     }
 }
 
@@ -238,9 +260,9 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
 
 extension CameraModel: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        let image = photo.fileDataRepresentation().flatMap { UIImage(data: $0) }
+        let data = photo.fileDataRepresentation()
         let completion = captureCompletion
         captureCompletion = nil
-        DispatchQueue.main.async { completion?(image) }
+        DispatchQueue.main.async { completion?(data) }
     }
 }

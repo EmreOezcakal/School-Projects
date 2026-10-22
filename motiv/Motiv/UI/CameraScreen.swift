@@ -12,6 +12,8 @@ struct CameraScreen: View {
     @AppStorage("smartScan") private var smartScan = false
     @AppStorage("autoSave") private var autoSave = true
     @AppStorage("claudeModel") private var claudeModel = ClaudeCoach.defaultModel
+    @AppStorage("maxResolution") private var maxResolution = true
+    @AppStorage("saveJPEG") private var saveJPEG = false
 
     @State private var drawMode = false
     @State private var drawRect: CGRect?
@@ -65,7 +67,7 @@ struct CameraScreen: View {
         .onReceive(camera.$activeZoom) { zoom in coach.currentZoom = zoom }
         .onChange(of: pickerItem) { loadPickedPhoto() }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .fullScreenCover(item: $editing) { item in EditorView(image: item.image) }
+        .fullScreenCover(item: $editing) { item in EditorView(source: item.source) }
         .overlay {
             if !camera.isAuthorized { permissionHint }
         }
@@ -269,7 +271,9 @@ struct CameraScreen: View {
     private var bottomBar: some View {
         HStack {
             Button {
-                if let photo = camera.lastPhoto { editing = EditableImage(image: photo) }
+                if let data = camera.lastPhotoData, let source = PhotoProcessor.image(from: data) {
+                    editing = EditableImage(source: source)
+                }
             } label: {
                 Group {
                     if let photo = camera.lastPhoto {
@@ -347,21 +351,30 @@ struct CameraScreen: View {
             withAnimation(.easeIn(duration: 0.2)) { shutterFlash = false }
         }
         let crop = aspect.unitCrop(imageAspect: CoachModel.imageAspect)
-        let save = autoSave
-        camera.capturePhoto { image in
-            guard let image else {
+        let fullFrame = aspect == .portrait3x4
+        let save = autoSave, asJPEG = saveJPEG
+        camera.capturePhoto(highResolution: maxResolution) { data in
+            guard let data else {
                 coach.flash("Foto konnte nicht aufgenommen werden")
                 return
             }
             DispatchQueue.global(qos: .userInitiated).async {
-                let photo = image.cropped(toUnit: crop)
+                guard let full = PhotoProcessor.image(from: data) else {
+                    DispatchQueue.main.async { coach.flash("Foto konnte nicht gelesen werden") }
+                    return
+                }
+                // 3:4 ist das ganze Sensorbild: dann bleibt die Originaldatei der Kamera samt Metadaten erhalten
+                let image = fullFrame ? full : PhotoProcessor.crop(full, unit: crop)
+                let encoded = fullFrame && !asJPEG ? data : PhotoProcessor.encode(image, asJPEG: asJPEG)
+                let thumb = PhotoProcessor.thumbnail(image, maxSide: 600)
+                let size = PhotoProcessor.megapixels(image)
                 DispatchQueue.main.async {
-                    camera.lastPhoto = photo
+                    camera.lastPhoto = thumb
+                    camera.lastPhotoData = encoded
                     coach.clearTarget()
-                    if save {
-                        PhotoSaver.save(photo) { ok in
-                            if !ok { coach.flash("Kein Zugriff auf Fotos – in den iOS-Einstellungen erlauben") }
-                        }
+                    guard save, let encoded else { return }
+                    PhotoSaver.save(encoded) { ok in
+                        coach.flash(ok ? "Gesichert · \(size)" : "Kein Zugriff auf Fotos – in den iOS-Einstellungen erlauben")
                     }
                 }
             }
@@ -371,8 +384,8 @@ struct CameraScreen: View {
     private func loadPickedPhoto() {
         guard let item = pickerItem else { return }
         Task {
-            if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                editing = EditableImage(image: image)
+            if let data = try? await item.loadTransferable(type: Data.self), let source = PhotoProcessor.image(from: data) {
+                editing = EditableImage(source: source)
             }
             pickerItem = nil
         }

@@ -7,6 +7,8 @@ struct SettingsView: View {
     @AppStorage("autoSave") private var autoSave = true
     @AppStorage("smartScan") private var smartScan = false
     @AppStorage("claudeModel") private var claudeModel = ClaudeCoach.defaultModel
+    @AppStorage("maxResolution") private var maxResolution = true
+    @AppStorage("saveJPEG") private var saveJPEG = false
     @State private var apiKey = Keychain.read(Keychain.apiKeyAccount) ?? ""
 
     var body: some View {
@@ -16,6 +18,23 @@ struct SettingsView: View {
                     Toggle("Drittel-Raster", isOn: $showGrid)
                     Toggle("Wasserwaage", isOn: $showLevel)
                     Toggle("Fotos automatisch sichern", isOn: $autoSave)
+                }
+
+                Section {
+                    Picker("Auflösung", selection: $maxResolution) {
+                        Text("Maximal").tag(true)
+                        Text("12 MP").tag(false)
+                    }
+                    Toggle("Als JPEG statt HEIF sichern", isOn: $saveJPEG)
+                } header: {
+                    Text("Fotoqualität")
+                } footer: {
+                    Text("""
+                    „Maximal“ nutzt die volle Sensorauflösung deines iPhones (bei neueren Pro-Modellen bis 48 MP, \
+                    bei .5x und wenig Licht oft 12 MP). Nach dem Auslösen zeigt Motiv kurz an, wie viele Megapixel \
+                    das Foto hat. 3:4 behält das ganze Sensorbild und die Originaldatei; 9:16, 4:5 und 1:1 schneiden zu. \
+                    HEIF ist bei gleicher Qualität halb so groß; JPEG öffnet jeder Windows-PC ohne Zusatzprogramm.
+                    """)
                 }
 
                 Section {

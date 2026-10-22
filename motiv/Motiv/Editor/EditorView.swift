@@ -9,16 +9,18 @@ final class EditorModel: ObservableObject {
     @Published private(set) var preview: UIImage?
     @Published private(set) var thumbnails: [String: UIImage] = [:]
 
+    /// Anzeige des unbearbeiteten Bilds (verkleinert); gerechnet wird beim Sichern auf `full`.
     let original: UIImage
+    private let full: CIImage
     private let previewSource: CIImage
     private let queue = DispatchQueue(label: "motiv.editor", qos: .userInitiated)
     private var generation = 0
 
-    init(image: UIImage) {
-        original = image.normalizedUp()
-        let full = CIImage(image: original) ?? CIImage()
-        let scale = min(1, 1600 / max(full.extent.width, full.extent.height, 1))
-        previewSource = full.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+    init(source: CIImage) {
+        full = source
+        original = PhotoProcessor.thumbnail(source, maxSide: 2000) ?? UIImage()
+        let scale = min(1, 1600 / max(source.extent.width, source.extent.height, 1))
+        previewSource = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         scheduleRender()
         makeThumbnails()
     }
@@ -38,13 +40,15 @@ final class EditorModel: ObservableObject {
         )
     }
 
-    /// Rechnet das Bild in voller Auflösung. `completion` läuft auf dem Main-Thread.
-    func exportFullResolution(completion: @escaping (UIImage?) -> Void) {
+    /// Rechnet das Bild in voller Auflösung und kodiert es. `completion` läuft auf dem Main-Thread.
+    func exportFullResolution(asJPEG: Bool, completion: @escaping (Data?, String) -> Void) {
         let settings = self.settings
-        let image = original
+        let source = full
         queue.async {
-            let output = CIImage(image: image).flatMap { FilterEngine.render(settings, source: $0) }
-            DispatchQueue.main.async { completion(output) }
+            let output = FilterEngine.apply(settings, to: source)
+            let data = PhotoProcessor.encode(output, asJPEG: asJPEG)
+            let size = PhotoProcessor.megapixels(output)
+            DispatchQueue.main.async { completion(data, size) }
         }
     }
 
@@ -86,8 +90,10 @@ struct EditorView: View {
 
     enum Mode { case looks, adjust }
 
-    init(image: UIImage) {
-        _model = StateObject(wrappedValue: EditorModel(image: image))
+    @AppStorage("saveJPEG") private var saveJPEG = false
+
+    init(source: CIImage) {
+        _model = StateObject(wrappedValue: EditorModel(source: source))
     }
 
     var body: some View {
@@ -219,15 +225,15 @@ struct EditorView: View {
 
     private func save() {
         isSaving = true
-        model.exportFullResolution { image in
-            guard let image else {
+        model.exportFullResolution(asJPEG: saveJPEG) { data, size in
+            guard let data else {
                 isSaving = false
                 show("Bearbeiten fehlgeschlagen")
                 return
             }
-            PhotoSaver.save(image) { ok in
+            PhotoSaver.save(data) { ok in
                 isSaving = false
-                show(ok ? "In Fotos gesichert ✓" : "Kein Zugriff auf Fotos")
+                show(ok ? "In Fotos gesichert ✓ · \(size)" : "Kein Zugriff auf Fotos")
             }
         }
     }

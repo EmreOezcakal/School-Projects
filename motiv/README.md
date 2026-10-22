@@ -14,8 +14,9 @@ bis der Rahmen das Bild füllt. Dann leuchtet der Auslöser.
 | **Rahmen zeichnen** | Kritzel-Symbol oben → Rahmen um dein Motiv ziehen → die App führt dich hin |
 | **Kamera** | .5x / 1x / 2x / Tele (je nach iPhone), Zwei-Finger-Zoom, Tippen = Fokus, Blitz |
 | **Formate** | 9:16, 3:4, 4:5, 1:1 – das Foto wird passend zugeschnitten |
+| **Fotoqualität** | Volle Sensorauflösung (bei neueren Pro-iPhones bis 48 MP), Apples volle Bildverarbeitung, Speichern als HEIF oder JPEG. Bei 3:4 bleibt die Originaldatei der Kamera unverändert |
 | **Hilfen** | Drittel-Raster, Wasserwaage (wird gelb, wenn das iPhone gerade ist) |
-| **Editor** | 9 eigene Looks (Sonnig, Film 400, Golden, S/W …) und Regler für Belichtung, Kontrast, Sättigung, Wärme, Lichter, Tiefen, Verblassen, Vignette, Körnung |
+| **Editor** | 9 eigene Looks (Sonnig, Film 400, Golden, S/W …) und Regler für Belichtung, Kontrast, Sättigung, Wärme, Lichter, Tiefen, Verblassen, Vignette, Körnung – gesichert wird in voller Auflösung |
 
 Kein Abo, keine Limits – alles ist freigeschaltet.
 
