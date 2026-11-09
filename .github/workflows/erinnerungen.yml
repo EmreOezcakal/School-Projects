@@ -1,0 +1,33 @@
+# Erinnerungen für die App „Kurs“ (schickt nur einen Anstoß – den Text baut die App auf dem iPad)
+# GitHub rechnet in UTC. Jede Zeit steht deshalb zweimal drin (Winter- und Sommerzeit);
+# das Skript prüft die deutsche Uhrzeit und sendet nur beim passenden Lauf.
+name: Erinnerungen
+
+on:
+  schedule:
+    - cron: "25 13,14 * * 1"     # Mo 15:25 – nach der 8. Stunde
+    - cron: "35 11,12 * * 2,4"   # Di + Do 13:35 – nach der 6. Stunde
+    - cron: "10 14,15 * * 3,5"   # Mi + Fr 16:10 – nach der 9. Stunde
+    - cron: "30 17,18 * * 0-4"   # So–Do 19:30 – Ist für morgen alles erledigt?
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Art: test, nachmittag oder abend"
+        default: "test"
+
+permissions:
+  contents: read
+
+jobs:
+  erinnern:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save --no-audit --no-fund web-push@3.6.7
+      - run: node .github/scripts/erinnerung.mjs
+        env:
+          PUSH_CONFIG: ${{ secrets.PUSH_CONFIG }}
+          KIND: ${{ inputs.kind }}
